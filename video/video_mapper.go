@@ -67,12 +67,35 @@ func (v VideoMapper) TransformMsg(m consumer.Message) (msg producer.Message, uui
 }
 
 func getVideoModel(videoContent map[string]interface{}, uuid string, tid string, lastModified string) *videoPayload {
-	title, _ := get("title", videoContent)
-	standfirst, _ := get("standfirst", videoContent)
-	description, _ := get("description", videoContent)
-	byline, _ := get("byline", videoContent)
-	firstPublishDate, _ := get("firstPublishedAt", videoContent)
-	publishedDate, _ := get("publishedAt", videoContent)
+	title, err := get("title", videoContent)
+	if err != nil || title == "" {
+		WarnLogger.Println(fmt.Errorf("%v - Extract title: %v", tid, err))
+	}
+
+	standfirst, err := get("standfirst", videoContent)
+	if err != nil || standfirst == "" {
+		WarnLogger.Println(fmt.Errorf("%v - Extract standfirst: %v", tid, err))
+	}
+
+	description, err := get("description", videoContent)
+	if err != nil || description == "" {
+		WarnLogger.Println(fmt.Errorf("%v - Extract description: %v", tid, err))
+	}
+
+	byline, err := get("byline", videoContent)
+	if err != nil || byline == "" {
+		WarnLogger.Println(fmt.Errorf("%v - Extract byline: %v", tid, err))
+	}
+
+	firstPublishDate, err := get("firstPublishedAt", videoContent)
+	if err != nil || firstPublishDate == "" {
+		WarnLogger.Println(fmt.Errorf("%v - Extract firstPublishDate: %v", tid, err))
+	}
+
+	publishedDate, err := get("publishedAt", videoContent)
+	if err != nil || publishedDate == "" {
+		WarnLogger.Println(fmt.Errorf("%v - Extract publishedDate: %v", tid, err))
+	}
 
 	mainImage, err := getMainImage(videoContent, tid, uuid)
 	if err != nil {
@@ -84,7 +107,11 @@ func getVideoModel(videoContent map[string]interface{}, uuid string, tid string,
 		WarnLogger.Println(fmt.Errorf("%v - %v", tid, err))
 	}
 
-	captionsList := getCaptions(transcriptionMap)
+	captionsList, err := getCaptions(transcriptionMap)
+	if err != nil {
+		WarnLogger.Println(fmt.Errorf("%v - %v", tid, err))
+	}
+
 	dataSources, err := getDataSources(videoContent["encoding"])
 	if err != nil {
 		WarnLogger.Println(fmt.Errorf("%v - %v", tid, err))
@@ -183,17 +210,24 @@ func getTranscript(videoContent map[string]interface{}, uuid string) (map[string
 	return transcriptionMap, transcript, nil
 }
 
-func getCaptions(transcriptionMap map[string]interface{}) []caption {
+func getCaptions(transcriptionMap map[string]interface{}) ([]caption, error) {
 	cList := []caption{}
 	if transcriptionMap == nil {
-		return cList
+		return cList, nil
 	}
 
-	captions, _ := transcriptionMap["captions"].([]interface{})
+	captions, ok := transcriptionMap["captions"].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Captions field of video JSON is null, captions will be empty.")
+	}
+
 	for _, elem := range captions {
 		captionMap := elem.(map[string]interface{})
 		mediaType, _ := get("mediaType", captionMap)
-		url, _ := get("url", captionMap)
+		url, err := get("url", captionMap)
+		if err != nil {
+			return nil, err
+		}
 
 		c := caption{
 			Url:       url,
@@ -202,7 +236,7 @@ func getCaptions(transcriptionMap map[string]interface{}) []caption {
 		cList = append(cList, c)
 	}
 
-	return cList
+	return cList, nil
 }
 
 func getDataSources(encoding interface{}) ([]dataSource, error) {
