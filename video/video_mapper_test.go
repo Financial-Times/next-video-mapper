@@ -1,6 +1,7 @@
 package video
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -16,6 +17,22 @@ const (
 
 var mapper = VideoMapper{}
 
+func mapStringToPublicationEvent(videoOutput, retMsgBody string) (videoOutputStruct, resultMsgStruct *publicationEvent, err error) {
+
+	videoOutputStruct = &publicationEvent{}
+	resultMsgStruct = &publicationEvent{}
+	if err := json.Unmarshal([]byte(videoOutput), videoOutputStruct); err != nil {
+		return nil, nil, err
+		//assert.NoError(t, err, "Error unmarshaling videoOutput")
+	}
+
+	if err := json.Unmarshal([]byte(retMsgBody), resultMsgStruct); err != nil {
+		return nil, nil, err
+		//assert.NoError(t, err, "Error unmarshaling resultMsg.Body")
+	}
+	return videoOutputStruct, resultMsgStruct, nil
+}
+
 func TestTransformMsg_TidHeaderMissing(t *testing.T) {
 	var message = consumer.Message{
 		Headers: map[string]string{
@@ -25,7 +42,7 @@ func TestTransformMsg_TidHeaderMissing(t *testing.T) {
 	}
 
 	_, _, err := mapper.TransformMsg(message)
-	assert.EqualError(t, err, "X-Request-Id not found in kafka message headers. Skipping message", "Expected error when X-Request-Id is missing")
+	assert.EqualError(t, err, "header X-Request-Id not found in kafka message headers. Skipping message", "Expected error when X-Request-Id is missing")
 }
 
 func TestTransformMsg_MessageTimestampHeaderMissing(t *testing.T) {
@@ -115,7 +132,11 @@ func TestTransformMsg_Success(t *testing.T) {
 
 	resultMsg, _, err := mapper.TransformMsg(message)
 	assert.NoError(t, err, "Error not expected for publish event")
-	assert.Equal(t, videoOutput, resultMsg.Body)
+
+	videoOutputStruct, resultMsgStruct, err := mapStringToPublicationEvent(videoOutput, resultMsg.Body)
+	if assert.NoError(t, err, "Error mapping string") {
+		assert.Equal(t, videoOutputStruct, resultMsgStruct)
+	}
 }
 
 func TestTransformMsg_WithStoryPackage(t *testing.T) {
