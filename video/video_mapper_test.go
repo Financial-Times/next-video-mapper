@@ -23,12 +23,10 @@ func mapStringToPublicationEvent(videoOutput, retMsgBody string) (videoOutputStr
 	resultMsgStruct = &publicationEvent{}
 	if err := json.Unmarshal([]byte(videoOutput), videoOutputStruct); err != nil {
 		return nil, nil, err
-		//assert.NoError(t, err, "Error unmarshaling videoOutput")
 	}
 
 	if err := json.Unmarshal([]byte(retMsgBody), resultMsgStruct); err != nil {
 		return nil, nil, err
-		//assert.NoError(t, err, "Error unmarshaling resultMsg.Body")
 	}
 	return videoOutputStruct, resultMsgStruct, nil
 }
